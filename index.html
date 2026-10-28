@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>서울 쓰레기통·무단투기 단속 데이터 탐색</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{--ink:#172235;--muted:#64748b;--line:#e2e8f0;--bg:#f4f7fb;--blue:#2458d3;--teal:#0f9b8e;--orange:#e58b32}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Malgun Gothic",sans-serif}
+header{background:linear-gradient(120deg,#132d58,#2458d3);color:white;padding:30px max(20px,calc((100vw - 1240px)/2)) 28px}
+.eyebrow{font-size:12px;letter-spacing:.12em;font-weight:800;opacity:.8}h1{font-size:clamp(25px,4vw,38px);line-height:1.2;margin:10px 0}header p{max-width:780px;color:#dce7ff;line-height:1.7;margin:0}
+main{max-width:1240px;margin:22px auto;padding:0 18px 44px}.toolbar,.panel,.metric{background:white;border:1px solid var(--line);border-radius:16px;box-shadow:0 6px 24px #18365b0a}
+.toolbar{padding:16px;display:flex;gap:12px;align-items:end;flex-wrap:wrap;margin-bottom:16px}.field{display:flex;flex-direction:column;gap:6px;min-width:170px}.field label{font-size:12px;color:var(--muted);font-weight:750}select,button{font:inherit;border:1px solid #cbd5e1;border-radius:9px;padding:10px 12px;background:#fff;color:var(--ink)}button{background:var(--blue);color:#fff;border-color:var(--blue);font-weight:700;cursor:pointer}button.secondary{background:white;color:var(--ink);border-color:var(--line)}.small{font-size:12px;color:var(--muted);line-height:1.6}
+.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px}.metric{padding:17px}.metric .label{font-size:12px;color:var(--muted);font-weight:700}.metric .value{font-size:28px;font-weight:850;margin:7px 0 3px;letter-spacing:-.04em}.metric .foot{font-size:12px;color:var(--muted)}
+.layout{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(320px,.8fr);gap:16px}.panel{padding:18px;min-width:0}.panel h2{font-size:17px;margin:0 0 5px}.sub{font-size:12px;color:var(--muted);margin:0 0 14px;line-height:1.6}
+#map{height:510px;border-radius:12px;border:1px solid var(--line);background:#eaf0f7;z-index:1}.map-note{font-size:11px;color:var(--muted);margin-top:10px}.legend{display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-top:8px}.dot{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:4px}
+canvas{width:100%;height:280px;display:block}.chart-tabs{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px}.chart-tabs button{font-size:12px;padding:8px 10px}.chart-tabs button.active{background:#132d58}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:10px 8px;text-align:right;border-bottom:1px solid #edf1f6;white-space:nowrap}th{font-size:11px;color:var(--muted);background:#f8fafc}td:first-child,th:first-child{text-align:left}tbody tr{cursor:pointer}tbody tr:hover{background:#f1f6ff}tbody tr.selected{background:#eaf1ff;font-weight:750}.table-wrap{overflow:auto;max-height:410px}
+.insight{border-radius:12px;background:#f0f6ff;padding:14px;line-height:1.7;font-size:13px;margin-top:12px}.warn{background:#fff7ed;border:1px solid #fed7aa;color:#854d0e;border-radius:12px;padding:13px;font-size:12px;line-height:1.7;margin-top:14px}
+.sources{display:grid;grid-template-columns:1fr 1fr;gap:12px}.source{padding:14px;border:1px solid var(--line);border-radius:12px}.source a{color:var(--blue);font-weight:750;word-break:break-word}.source p{font-size:12px;color:var(--muted);line-height:1.6;margin:7px 0 0}
+footer{font-size:11px;color:var(--muted);line-height:1.7;margin-top:18px}
+@media(max-width:850px){.layout{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}#map{height:420px}}
+@media(max-width:520px){header{padding:24px 18px}.metrics{gap:8px}.metric{padding:12px}.metric .value{font-size:23px}.sources{grid-template-columns:1fr}.toolbar{align-items:stretch}.field{width:100%}button{width:100%}}
+</style>
+</head>
+<body>
+<header><div class="eyebrow">SEOUL · PUBLIC DATA EXPLORER</div><h1>버릴 곳은 가까이, 무단투기는 줄어들까?</h1><p>서울시 2024년 자치구별 가로쓰레기통 설치 현황과 무단투기 단속 실적을 한 화면에서 비교합니다. 지도에서 구를 선택하고, 수치와 연도별 변화를 살펴보세요.</p></header>
+<main>
+<section class="toolbar">
+ <div class="field"><label for="district">자치구 선택</label><select id="district"><option value="all">서울 전체 25개 구</option><option>강동구</option><option>서초구</option><option>종로구</option><option>마포구</option></select></div>
+ <div class="field"><label for="metric">지도 색상 기준</label><select id="metric"><option value="bins">가로쓰레기통 수</option><option value="enforce">무단투기 단속 건수</option></select></div>
+ <div class="field"><label for="year">가로쓰레기통 연도</label><select id="year"></select></div>
+ <button id="reset" class="secondary">선택 초기화</button>
+ <span class="small">기본 데이터: 2024년 · 쓰레기통 연도만 변경 가능</span>
+</section>
+<section class="metrics">
+ <div class="metric"><div class="label">선택 구 쓰레기통 수</div><div class="value" id="mBins">—</div><div class="foot" id="mBinsFoot">2024년 12월 기준</div></div>
+ <div class="metric"><div class="label">선택 구 단속 건수</div><div class="value" id="mEnforce">—</div><div class="foot">2024년 연간 실적</div></div>
+ <div class="metric"><div class="label">가로쓰레기통 수 최다</div><div class="value" id="mMaxBins">—</div><div class="foot" id="mMaxBinsFoot">서울 자치구 비교</div></div>
+ <div class="metric"><div class="label">단속 건수 최다</div><div class="value" id="mMaxEnforce">—</div><div class="foot" id="mMaxEnforceFoot">서울 자치구 비교</div></div>
+</section>
+<div class="layout">
+ <section class="panel"><h2>서울 자치구 경계 지도</h2><p class="sub">행정구역 경계 GeoJSON과 지도 타일을 불러옵니다. 구를 누르면 해당 구의 수치를 확인할 수 있습니다.</p><div id="map"></div><div class="legend"><span><i class="dot" style="background:#e6efff"></i>낮은 값</span><span><i class="dot" style="background:#8db4ff"></i>중간 값</span><span><i class="dot" style="background:#2458d3"></i>높은 값</span><span><i class="dot" style="background:#e58b32"></i>선택 구</span></div><div id="mapStatus" class="map-note">지도를 불러오는 중입니다. 인터넷 연결이 필요합니다.</div></section>
+ <section class="panel"><h2>지표 비교</h2><p class="sub">두 지표는 측정 대상이 다르므로 별도로 비교하세요.</p><div class="chart-tabs"><button class="active" data-chart="bins">쓰레기통 수</button><button data-chart="enforce">단속 건수</button><button data-chart="trend">설치 수 추이</button></div><canvas id="chart" width="760" height="360" aria-label="자치구별 비교 차트"></canvas><div class="insight" id="insight">데이터를 불러오는 중입니다.</div><div class="warn"><b>해석할 때 주의:</b> 단속 건수는 실제 무단투기율이 아닙니다. 단속 인력·활동량, 신고, 유동인구 등에 영향을 받습니다. 이 자료만으로 “쓰레기통이 적어서 무단투기가 늘었다”고 인과관계를 단정할 수 없습니다.</div></section>
+</div>
+<section class="panel" style="margin-top:16px"><h2>자치구별 원자료 비교</h2><p class="sub">행을 누르면 지도와 상단 수치가 해당 자치구 기준으로 바뀝니다. 표는 선택한 쓰레기통 연도 기준입니다.</p><div class="table-wrap"><table><thead><tr><th>자치구</th><th>가로쓰레기통</th><th>무단투기 단속 건수</th><th>2023→2024 변화</th></tr></thead><tbody id="rows"></tbody></table></div></section>
+<section class="panel" style="margin-top:16px"><h2>데이터 출처와 기준</h2><div class="sources" style="margin-top:12px"><div class="source"><b>가로쓰레기통 설치 현황</b><p>업로드된 「서울특별시 년도별 자치구별 가로쓰레기통 설치현황(2024.12.)」 파일에서 2013~2024년 수치를 반영했습니다.</p><a href="https://data.seoul.go.kr/dataList/OA-15069/F/1/datasetView.do" target="_blank" rel="noopener">서울 열린데이터광장 원자료 ↗</a></div><div class="source"><b>무단투기 단속 실적</b><p>업로드된 「2024년 자치구별 무단투기 단속 실적(수합본)」 파일의 자치구별 단속 건수를 반영했습니다. 합계는 113,691건입니다.</p><a href="https://opengov.seoul.go.kr/public/35290621" target="_blank" rel="noopener">서울 정보소통광장 원자료 ↗</a></div></div><footer>지도 경계: southkorea/seoul-maps의 서울 행정구역 GeoJSON(2013년 경계 데이터) 참고 · 베이스맵: OpenStreetMap. 지도 경계 데이터의 기준연도와 최신 행정경계가 다를 수 있습니다. 차트와 비교표는 제공된 파일의 값이며 실시간 갱신되지 않습니다. 지도 데이터·타일 로딩을 위해 인터넷 연결이 필요합니다.</footer></section>
+</main>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const binsByYear={
+"2013":[130,130,147,58,112,250,79,111,129,101,66,191,169,182,176,80,212,59,201,129,62,6,946,132,136],
+"2014":[129,234,132,63,121,241,79,46,130,108,59,188,178,208,248,140,219,72,211,129,35,6,946,300,238],
+"2015":[178,256,168,59,133,256,79,98,166,122,50,229,183,230,200,153,273,84,109,142,84,2,928,238,372],
+"2016":[210,272,198,72,165,268,79,136,199,152,42,258,221,248,204,183,305,99,117,143,101,10,942,265,380],
+"2017":[235,308,228,106,139,285,49,110,164,158,36,254,244,251,208,213,333,123,147,160,131,57,946,281,404],
+"2018":[265,344,248,137,174,296,49,148,184,200,19,277,272,270,212,253,300,139,183,181,149,174,946,283,416],
+"2019":[304,360,267,172,206,172,76,175,215,235,54,291,290,274,216,274,325,159,219,181,175,250,960,301,436],
+"2020":[202,343,267,177,129,144,93,122,247,261,88,234,290,274,106,275,371,97,189,161,84,250,982,121,382],
+"2021":[197,183,269,177,122,80,93,126,243,280,91,233,290,239,106,287,292,45,218,184,175,250,976,123,328],
+"2022":[171,167,267,179,111,75,93,136,245,274,90,254,189,240,106,288,259,46,123,200,63,222,948,132,78],
+"2023":[272,146,278,102,104,110,101,185,217,303,156,308,218,254,136,315,221,70,123,230,108,246,974,151,52],
+"2024":[330,176,283,142,234,191,131,247,229,325,156,380,284,270,186,343,265,70,202,290,256,252,1014,191,96]
+};
+const districts=["종로구","중구","용산구","성동구","광진구","동대문구","중랑구","성북구","강북구","도봉구","노원구","은평구","서대문구","마포구","양천구","강서구","구로구","금천구","영등포구","동작구","관악구","서초구","강남구","송파구","강동구"];
+const enforcement=[22243,9189,588,3087,1409,6880,2949,764,2174,1555,2213,4831,3773,2835,888,515,4341,1722,2803,1568,5508,9003,11462,4345,7046];
+const index={};districts.forEach((d,i)=>index[d]={name:d,bins:{},enforce:enforcement[i]});Object.keys(binsByYear).forEach(y=>binsByYear[y].forEach((v,i)=>index[districts[i]].bins[y]=v));
+let selected='all',metric='bins',chartType='bins',year='2024',geoLayer=null,geoReady=false;
+const map=L.map('map',{scrollWheelZoom:true}).setView([37.5665,126.9780],10);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(map);
+function normalizeName(p){let vals=Object.values(p||{}).filter(v=>typeof v==='string');for(const v of vals){let s=v.replace(/\s/g,'');let found=districts.find(d=>s===d||s.endsWith(d));if(found)return found;}return null}
+function val(d){return metric==='bins'?index[d]?.bins[year]:index[d]?.enforce}
+function fmt(n){return n==null?'자료 없음':n.toLocaleString('ko-KR')}
+function color(v,min,max){if(v==null)return'#dbe2ea';let t=max===min?.5:(v-min)/(max-min);return t<.33?'#e6efff':t<.66?'#8db4ff':'#2458d3'}
+function styleFeature(feature){const d=normalizeName(feature.properties);const values=districts.map(x=>val(x)).filter(v=>v!=null);return{color:selected===d?'#e58b32':'#ffffff',weight:selected===d?3:1.2,fillColor:color(val(d),Math.min(...values),Math.max(...values)),fillOpacity:selected==='all'||selected===d?.78:.38}}
+function popupHtml(d){return `<b>${d}</b><br>가로쓰레기통(${year}): ${fmt(index[d]?.bins[year])}개<br>무단투기 단속(2024): ${fmt(index[d]?.enforce)}건`}
+function refreshMap(){if(!geoLayer)return;geoLayer.setStyle(styleFeature);geoLayer.eachLayer(l=>{let d=normalizeName(l.feature.properties);if(d){l.bindTooltip(d,{sticky:true});l.bindPopup(popupHtml(d));if(selected===d)l.bringToFront()}})}
+const geoUrls=[
+'https://raw.githubusercontent.com/southkorea/seoul-maps/master/kostat/2013/geojson/seoul_municipalities_geo.json',
+'https://raw.githubusercontent.com/southkorea/seoul-maps/master/juso/2015/geojson/seoul_municipalities_geo.json'
+];
+async function loadGeo(){for(const url of geoUrls){try{const r=await fetch(url);if(!r.ok)continue;const g=await r.json();if(!g.features?.length)continue;geoLayer=L.geoJSON(g,{style:styleFeature,onEachFeature:(f,l)=>{let d=normalizeName(f.properties);if(d){l.bindTooltip(d,{sticky:true});l.bindPopup(popupHtml(d));l.on('click',()=>{selected=d;document.getElementById('district').value=d;render()})}}}).addTo(map);map.fitBounds(geoLayer.getBounds(),{padding:[12,12]});geoReady=true;document.getElementById('mapStatus').textContent='행정구역 경계를 불러왔습니다. 구 경계는 공개 GeoJSON 자료 기준입니다.';refreshMap();return}catch(e){}}document.getElementById('mapStatus').textContent='행정구역 경계 파일을 불러오지 못했습니다. 배경 지도는 표시되지만 구별 색칠 기능은 사용할 수 없습니다. 인터넷 연결을 확인해 주세요.'}
+function activeDistricts(){return selected==='all'?districts:[selected]}
+function drawChart(){const c=document.getElementById('chart'),ctx=c.getContext('2d'),w=c.width,h=c.height;ctx.clearRect(0,0,w,h);const list=activeDistricts();ctx.font='12px system-ui';ctx.fillStyle='#64748b';ctx.strokeStyle='#e7edf5';const isTrend=chartType==='trend';if(isTrend){let vals=Object.keys(binsByYear).map(y=>({y,v:index[selected==='all'?'강동구':selected].bins[y]}));if(selected==='all'){vals=Object.keys(binsByYear).map(y=>({y,v:districts.reduce((s,d)=>s+index[d].bins[y],0)}))}const max=Math.max(...vals.map(a=>a.v))*1.08;for(let i=0;i<5;i++){let y=25+i*(h-65)/4;ctx.beginPath();ctx.moveTo(46,y);ctx.lineTo(w-12,y);ctx.stroke();ctx.fillText(Math.round(max*(1-i/4)).toLocaleString(),2,y+4)}ctx.strokeStyle='#2458d3';ctx.lineWidth=3;ctx.beginPath();vals.forEach((a,i)=>{let x=50+i*(w-75)/(vals.length-1),y=h-40-a.v/max*(h-70);i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke();vals.forEach((a,i)=>{let x=50+i*(w-75)/(vals.length-1),y=h-40-a.v/max*(h-70);ctx.fillStyle='#2458d3';ctx.beginPath();ctx.arc(x,y,3,0,Math.PI*2);ctx.fill();if(i%2===0||i===vals.length-1){ctx.fillStyle='#64748b';ctx.fillText(a.y,x-14,h-17)}});ctx.fillStyle='#172235';ctx.fillText(selected==='all'?'서울 전체 설치 수':'선택 자치구 설치 수',50,14);return}
+const vals=list.map(d=>({d,v:chartType==='bins'?index[d].bins[year]:index[d].enforce}));const max=Math.max(...vals.map(a=>a.v))*1.1;const top=24,bottom=44,plotH=h-top-bottom,plotW=w-72;for(let i=0;i<5;i++){let y=top+i*plotH/4;ctx.beginPath();ctx.moveTo(56,y);ctx.lineTo(w-10,y);ctx.stroke();ctx.fillStyle='#64748b';ctx.fillText(Math.round(max*(1-i/4)).toLocaleString(),2,y+4)}const slot=plotW/vals.length,bw=Math.min(42,slot*.62);vals.forEach((a,i)=>{let x=56+i*slot+(slot-bw)/2,bh=a.v/max*plotH,y=top+plotH-bh;ctx.fillStyle=a.d===selected?'#e58b32':(chartType==='bins'?'#2458d3':'#0f9b8e');ctx.fillRect(x,y,bw,bh);ctx.fillStyle='#172235';ctx.textAlign='center';ctx.font=vals.length>10?'10px system-ui':'11px system-ui';ctx.fillText(a.v.toLocaleString(),x+bw/2,Math.max(12,y-5));ctx.fillStyle='#64748b';ctx.fillText(a.d.replace('구',''),x+bw/2,h-22)});ctx.textAlign='left'}
+function render(){const list=activeDistricts(),totalBins=list.reduce((s,d)=>s+(index[d].bins[year]||0),0),totalE=list.reduce((s,d)=>s+index[d].enforce,0);document.getElementById('mBins').textContent=fmt(totalBins)+'개';document.getElementById('mBinsFoot').textContent=selected==='all'?`${year}년 서울 합계`:`${selected} · ${year}년`;document.getElementById('mEnforce').textContent=fmt(totalE)+'건';const maxB=districts.reduce((a,b)=>index[a].bins[year]>index[b].bins[year]?a:b),maxE=districts.reduce((a,b)=>index[a].enforce>index[b].enforce?a:b);document.getElementById('mMaxBins').textContent=maxB;document.getElementById('mMaxBinsFoot').textContent=`${fmt(index[maxB].bins[year])}개 · ${year}년`;document.getElementById('mMaxEnforce').textContent=maxE;document.getElementById('mMaxEnforceFoot').textContent=`${fmt(index[maxE].enforce)}건 · 2024년`;
+document.getElementById('rows').innerHTML=list.map(d=>{let b=index[d].bins[year],prev=index[d].bins['2023'],now=index[d].bins['2024'],delta=now-prev,sign=delta>0?'+':'';return `<tr class="${d===selected?'selected':''}" data-d="${d}"><td>${d}</td><td>${fmt(b)}개</td><td>${fmt(index[d].enforce)}건</td><td>${sign}${fmt(delta)}개 (${(delta/prev*100).toFixed(1)}%)</td></tr>`}).join('');document.querySelectorAll('#rows tr').forEach(tr=>tr.onclick=()=>{selected=tr.dataset.d;document.getElementById('district').value=selected;render()});
+let insight='';if(selected==='all'){insight=`서울 전체 가로쓰레기통은 ${year}년 ${fmt(totalBins)}개이며, 2024년 단속 실적은 ${fmt(totalE)}건입니다. 두 수치는 각각 설치 수와 단속 활동 결과를 나타냅니다.`}else{const b=index[selected].bins[year],e=index[selected].enforce,rankB=[...districts].sort((a,b)=>index[b].bins[year]-index[a].bins[year]).indexOf(selected)+1,rankE=[...districts].sort((a,b)=>index[b].enforce-index[a].enforce).indexOf(selected)+1;insight=`${selected}의 가로쓰레기통은 ${year}년 ${fmt(b)}개(25개 구 중 ${rankB}위), 2024년 단속 실적은 ${fmt(e)}건(단속 건수 기준 ${rankE}위)입니다. 이 순위만으로 쓰레기통 수가 단속 실적의 원인이라고 판단할 수는 없습니다.`}document.getElementById('insight').textContent=insight;drawChart();refreshMap()}
+const yearSelect=document.getElementById('year');Object.keys(binsByYear).forEach(y=>yearSelect.add(new Option(y+'년',y,y==='2024',y==='2024')));yearSelect.onchange=e=>{year=e.target.value;render()};document.getElementById('district').onchange=e=>{selected=e.target.value;render()};document.getElementById('metric').onchange=e=>{metric=e.target.value;refreshMap()};document.getElementById('reset').onclick=()=>{selected='all';metric='bins';chartType='bins';year='2024';document.getElementById('district').value='all';document.getElementById('metric').value='bins';yearSelect.value='2024';document.querySelectorAll('[data-chart]').forEach(b=>b.classList.toggle('active',b.dataset.chart==='bins'));render()};
+document.querySelectorAll('[data-chart]').forEach(b=>b.onclick=()=>{chartType=b.dataset.chart;document.querySelectorAll('[data-chart]').forEach(x=>x.classList.toggle('active',x===b));drawChart()});
+render();loadGeo();
+</script>
+</body></html>
