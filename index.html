@@ -114,13 +114,31 @@ function zoomToDistrict(d){
   if(map.getLevel()>6)map.setLevel(6);
  }
 }
+const districtMapCenters={
+ '종로구':[37.5949,126.9773],'중구':[37.5636,126.9976],'용산구':[37.5326,126.9905],
+ '성동구':[37.5634,127.0369],'광진구':[37.5385,127.0823],'동대문구':[37.5744,127.0396],
+ '중랑구':[37.6063,127.0927],'성북구':[37.5894,127.0167],'강북구':[37.6396,127.0257],
+ '도봉구':[37.6688,127.0471],'노원구':[37.6542,127.0568],'은평구':[37.6027,126.9291],
+ '서대문구':[37.5791,126.9368],'마포구':[37.5663,126.9019],'양천구':[37.5170,126.8665],
+ '강서구':[37.5509,126.8495],'구로구':[37.4955,126.8874],'금천구':[37.4519,126.9020],
+ '영등포구':[37.5264,126.8963],'동작구':[37.5124,126.9393],'관악구':[37.4784,126.9516],
+ '서초구':[37.4837,127.0324],'강남구':[37.5172,127.0473],'송파구':[37.5145,127.1059],
+ '강동구':[37.5301,127.1238]
+};
 function updateBinOverlays(){
- if(!map)return;
+ if(!map||!window.kakao||!kakao.maps)return;
  binOverlays.forEach(o=>o.setMap(null));binOverlays=[];
- geoLayer.forEach(item=>{
-  const count=index[item.name]?.bins[year];if(count==null||!item.center)return;
-  const content='<div title="'+item.name+' 가로쓰레기통 합계" style="display:flex;align-items:center;gap:4px;padding:5px 8px;background:#fff;border:2px solid #e58b32;border-radius:20px;box-shadow:0 2px 8px rgba(23,34,53,.35);font:700 12px Arial,sans-serif;color:#172235;white-space:nowrap;cursor:pointer;position:relative;z-index:9999"><span style="font-size:18px;line-height:1">🗑️</span><span>'+count.toLocaleString('ko-KR')+'개</span></div>';
-  const overlay=new kakao.maps.CustomOverlay({position:item.center,content:content,yAnchor:1,zIndex:9999,clickable:true});
+ districts.forEach(d=>{
+  const count=index[d]?.bins[year],coords=districtMapCenters[d];
+  if(count==null||!coords)return;
+  const content=document.createElement('div');
+  content.style.cssText='display:flex!important;visibility:visible!important;opacity:1!important;align-items:center;gap:4px;padding:5px 8px;background:#fff;border:2px solid #e58b32;border-radius:20px;box-shadow:0 2px 8px rgba(23,34,53,.45);font:700 12px Arial,sans-serif;color:#172235;white-space:nowrap;cursor:pointer;pointer-events:auto;position:relative;z-index:99999;';
+  const icon=document.createElement('span');icon.textContent='🗑️';icon.style.cssText='font-size:18px;line-height:1;display:inline-block';
+  const label=document.createElement('span');label.textContent=count.toLocaleString('ko-KR')+'개';
+  content.append(icon,label);content.title=d+' 가로쓰레기통 총량(대표 위치)';
+  content.addEventListener('click',()=>{selected=d;document.getElementById('district').value=d;render();zoomToDistrict(d)});
+  const position=new kakao.maps.LatLng(coords[0],coords[1]);
+  const overlay=new kakao.maps.CustomOverlay({position,content,yAnchor:1,zIndex:99999,clickable:true});
   overlay.setMap(map);binOverlays.push(overlay);
  });
 }
@@ -165,7 +183,7 @@ async function loadGeo(){
   });
   if(!geoLayer.length)continue;
   map.setBounds(bounds);geoReady=true;
-  document.getElementById('mapStatus').textContent='구를 누르거나 위 자치구 선택 메뉴에서 구를 고르면 확대됩니다. 🗑️ 아이콘의 숫자는 구별 총량이며 실제 개별 설치 위치는 아닙니다.';
+  document.getElementById('mapStatus').textContent='🗑️ 아이콘과 숫자는 각 자치구의 쓰레기통 총량을 나타내는 대표 표시입니다. 아이콘을 눌러 해당 구로 이동할 수 있습니다.';
   refreshMap();zoomToDistrict(selected);return;
  }catch(e){}}
  document.getElementById('mapStatus').textContent='행정구역 경계 파일을 불러오지 못했습니다. 카카오맵 배경은 표시되지만 구별 색칠 기능은 사용할 수 없습니다. 인터넷 연결을 확인해 주세요.';
