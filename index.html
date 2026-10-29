@@ -39,7 +39,7 @@ footer{font-size:11px;color:var(--muted);line-height:1.7;margin-top:18px}
  <div class="metric"><div class="label">단속 건수 최다</div><div class="value" id="mMaxEnforce">—</div><div class="foot" id="mMaxEnforceFoot">서울 자치구 비교</div></div>
 </section>
 <div class="layout">
- <section class="panel"><h2>서울 자치구 경계 지도</h2><p class="sub">행정구역 경계 GeoJSON과 지도 타일을 불러옵니다. 구를 누르면 해당 구의 수치를 확인할 수 있습니다.</p><div id="map"></div><div class="legend"><span><i class="dot" style="background:#e6efff"></i>낮은 값</span><span><i class="dot" style="background:#8db4ff"></i>중간 값</span><span><i class="dot" style="background:#2458d3"></i>높은 값</span><span><i class="dot" style="background:#e58b32"></i>선택 구</span></div><div id="mapStatus" class="map-note">지도를 불러오는 중입니다. 인터넷 연결이 필요합니다.</div></section>
+ <section class="panel"><h2>서울 자치구 경계 지도</h2><p class="sub">구를 누르면 해당 구로 확대됩니다. 🗑️ 아이콘의 숫자는 선택 연도의 구별 쓰레기통 총량입니다.</p><div id="map"></div><div class="legend"><span><i class="dot" style="background:#e6efff"></i>낮은 값</span><span><i class="dot" style="background:#8db4ff"></i>중간 값</span><span><i class="dot" style="background:#2458d3"></i>높은 값</span><span><i class="dot" style="background:#e58b32"></i>선택 구</span></div><div id="mapStatus" class="map-note">지도를 불러오는 중입니다. 인터넷 연결이 필요합니다.</div></section>
  <section class="panel"><h2>지표 비교</h2><p class="sub">두 지표는 측정 대상이 다르므로 별도로 비교하세요.</p><div class="chart-tabs"><button class="active" data-chart="bins">쓰레기통 수</button><button data-chart="enforce">단속 건수</button><button data-chart="trend">설치 수 추이</button></div><canvas id="chart" width="760" height="360" aria-label="자치구별 비교 차트"></canvas><div class="insight" id="insight">데이터를 불러오는 중입니다.</div><div class="warn"><b>해석할 때 주의:</b> 단속 건수는 실제 무단투기율이 아닙니다. 단속 인력·활동량, 신고, 유동인구 등에 영향을 받습니다. 이 자료만으로 “쓰레기통이 적어서 무단투기가 늘었다”고 인과관계를 단정할 수 없습니다.</div></section>
 </div>
 <section class="panel" style="margin-top:16px"><h2>자치구별 원자료 비교</h2><p class="sub">행을 누르면 지도와 상단 수치가 해당 자치구 기준으로 바뀝니다. 표의 패턴은 평균 대비 위치를 나타내며, 아래 요약에 피어슨 상관계수(r)를 표시합니다. 단속 건수는 실제 무단투기율과 다릅니다.</p><div class="table-wrap"><table><thead><tr><th>자치구</th><th>가로쓰레기통</th><th>무단투기 단속 건수</th><th>비교 패턴</th></tr></thead><tbody id="rows"></tbody></table></div></section>
@@ -65,7 +65,7 @@ const districts=["종로구","중구","용산구","성동구","광진구","동�
 const enforcement=[22243,9189,588,3087,1409,6880,2949,764,2174,1555,2213,4831,3773,2835,888,515,4341,1722,2803,1568,5508,9003,11462,4345,7046];
 const index={};districts.forEach((d,i)=>index[d]={name:d,bins:{},enforce:enforcement[i]});Object.keys(binsByYear).forEach(y=>binsByYear[y].forEach((v,i)=>index[districts[i]].bins[y]=v));
 const focusDistricts=['강동구','서초구','마포구','종로구'];
-let selected='focus',metric='bins',chartType='bins',year='2024',map=null,geoLayer=[],geoReady=false,infoOverlay=null;
+let selected='focus',metric='bins',chartType='bins',year='2024',map=null,geoLayer=[],geoReady=false,infoOverlay=null,binOverlays=[];
 function initKakaoMap(){
  if(!window.kakao||!kakao.maps){document.getElementById('mapStatus').textContent='카카오맵 SDK를 불러오지 못했습니다. JavaScript 키와 도메인 설정을 확인해 주세요.';return}
  kakao.maps.load(()=>{
@@ -97,7 +97,36 @@ function refreshMap(){
  if(!map||!geoLayer.length)return;
  geoLayer.forEach(item=>{
   item.polygons.forEach(poly=>poly.setOptions(polygonStyle(item.name)));
-  if(selected===item.name)item.polygons.forEach(poly=>poly.setZIndex(10));
+  item.polygons.forEach(poly=>poly.setZIndex(selected===item.name?10:1));
+ });
+ updateBinOverlays();
+}
+function zoomToDistrict(d){
+ if(!map||!geoLayer.length)return;
+ if(d==='all'||d==='focus'){
+  const bounds=new kakao.maps.LatLngBounds();
+  geoLayer.forEach(item=>{if(d==='all'||focusDistricts.includes(item.name))item.boundsPoints.forEach(p=>bounds.extend(p))});
+  map.setBounds(bounds);return;
+ }
+ const item=geoLayer.find(x=>x.name===d);
+ if(item&&item.boundsPoints.length){
+  const bounds=new kakao.maps.LatLngBounds();item.boundsPoints.forEach(p=>bounds.extend(p));
+  map.setBounds(bounds);
+  if(map.getLevel()>6)map.setLevel(6);
+ }
+}
+function updateBinOverlays(){
+ if(!map)return;
+ binOverlays.forEach(o=>o.setMap(null));binOverlays=[];
+ geoLayer.forEach(item=>{
+  const count=index[item.name]?.bins[year];if(count==null||!item.center)return;
+  const content=document.createElement('div');
+  content.style.cssText='display:flex;align-items:center;gap:4px;padding:4px 7px;background:#fff;border:1px solid #e58b32;border-radius:18px;box-shadow:0 2px 8px #17223530;font:700 11px system-ui;color:#172235;white-space:nowrap;cursor:pointer;';
+  content.innerHTML='<span style="font-size:16px;line-height:1">🗑️</span><span>'+count.toLocaleString('ko-KR')+'개</span>';
+  content.title=item.name+' 가로쓰레기통 합계 (실제 개별 위치 아님)';
+  content.onclick=()=>{selected=item.name;document.getElementById('district').value=selected;render();zoomToDistrict(item.name)};
+  const overlay=new kakao.maps.CustomOverlay({position:item.center,content,yAnchor:1,zIndex:20,clickable:true});
+  overlay.setMap(map);binOverlays.push(overlay);
  });
 }
 function geoRingsToPath(rings){return rings.map(ring=>ring.map(coord=>new kakao.maps.LatLng(coord[1],coord[0])))}
@@ -110,7 +139,7 @@ function makePolygons(feature,d){
   const paths=geoRingsToPath(poly);
   const polygon=new kakao.maps.Polygon({map, path:paths, ...polygonStyle(d)});
   kakao.maps.event.addListener(polygon,'click',mouseEvent=>{
-   selected=d;document.getElementById('district').value=d;render();
+   selected=d;document.getElementById('district').value=d;render();zoomToDistrict(d);
    if(infoOverlay)infoOverlay.setMap(null);
    infoOverlay=new kakao.maps.CustomOverlay({position:mouseEvent.latLng,content:popupHtml(d),yAnchor:1});
    infoOverlay.setMap(map);
@@ -129,14 +158,19 @@ async function loadGeo(){
   const bounds=new kakao.maps.LatLngBounds();
   g.features.forEach(feature=>{
    const d=normalizeName(feature.properties);if(!d)return;
-   const polygons=makePolygons(feature,d);if(!polygons.length)return;
-   geoLayer.push({name:d,polygons});
    const geometry=feature.geometry, coords=geometry.type==='Polygon'?[geometry.coordinates]:geometry.type==='MultiPolygon'?geometry.coordinates:[];
-   coords.forEach(poly=>poly.forEach(ring=>ring.forEach(c=>bounds.extend(new kakao.maps.LatLng(c[1],c[0])))));
+   const boundsPoints=[];
+   coords.forEach(poly=>poly.forEach(ring=>ring.forEach(c=>{const p=new kakao.maps.LatLng(c[1],c[0]);bounds.extend(p);boundsPoints.push(p)})));
+   const polygons=makePolygons(feature,d);if(!polygons.length)return;
+   const center=boundsPoints.length?new kakao.maps.LatLng(
+    boundsPoints.reduce((s,p)=>s+p.getLat(),0)/boundsPoints.length,
+    boundsPoints.reduce((s,p)=>s+p.getLng(),0)/boundsPoints.length
+   ):null;
+   geoLayer.push({name:d,polygons,boundsPoints,center});
   });
   if(!geoLayer.length)continue;
   map.setBounds(bounds);geoReady=true;
-  document.getElementById('mapStatus').textContent='행정구역 경계를 불러왔습니다. 구를 누르면 수치가 표시됩니다. 경계 출처는 공개 GeoJSON 자료입니다.';
+  document.getElementById('mapStatus').textContent='구를 누르면 확대됩니다. 🗑️ 아이콘은 구별 집계 수치를 나타내며, 실제 개별 쓰레기통 위치가 아닙니다.';
   refreshMap();return;
  }catch(e){}}
  document.getElementById('mapStatus').textContent='행정구역 경계 파일을 불러오지 못했습니다. 카카오맵 배경은 표시되지만 구별 색칠 기능은 사용할 수 없습니다. 인터넷 연결을 확인해 주세요.';
@@ -147,7 +181,7 @@ const vals=list.map(d=>({d,v:chartType==='bins'?index[d].bins[year]:index[d].enf
 function render(){const list=activeDistricts(),totalBins=list.reduce((s,d)=>s+(index[d].bins[year]||0),0),totalE=list.reduce((s,d)=>s+index[d].enforce,0);document.getElementById('mBins').textContent=fmt(totalBins)+'개';document.getElementById('mBinsFoot').textContent=selected==='all'?`${year}년 서울 합계`:`${selected} · ${year}년`;document.getElementById('mEnforce').textContent=fmt(totalE)+'건';const maxB=districts.reduce((a,b)=>index[a].bins[year]>index[b].bins[year]?a:b),maxE=districts.reduce((a,b)=>index[a].enforce>index[b].enforce?a:b);document.getElementById('mMaxBins').textContent=maxB;document.getElementById('mMaxBinsFoot').textContent=`${fmt(index[maxB].bins[year])}개 · ${year}년`;document.getElementById('mMaxEnforce').textContent=maxE;document.getElementById('mMaxEnforceFoot').textContent=`${fmt(index[maxE].enforce)}건 · 2024년`;
 const compareGroup=selected==='all'?districts:focusDistricts;const avgBins=compareGroup.reduce((sum,d)=>sum+index[d].bins[year],0)/compareGroup.length;const avgEnforce=compareGroup.reduce((sum,d)=>sum+index[d].enforce,0)/compareGroup.length;document.getElementById('rows').innerHTML=list.map(d=>{const b=index[d].bins[year],e=index[d].enforce;const binsHigh=b>avgBins,enforceHigh=e>avgEnforce;const nearBins=Math.abs(b-avgBins)<avgBins*.05,nearEnforce=Math.abs(e-avgEnforce)<avgEnforce*.05;let pattern='＋ 같은 방향',color='#087f5b',detail='두 지표 모두 비교 집단 평균의 같은 쪽';if(nearBins||nearEnforce){pattern='≈ 기준 근처';color='#64748b';detail='평균과 가까워 방향 구분이 어려움'}else if(binsHigh!==enforceHigh){pattern='− 반대 방향';color='#b45309';detail='한 지표는 평균보다 높고 다른 지표는 낮음'}return `<tr class="${d===selected?'selected':''}" data-d="${d}"><td>${d}</td><td>${fmt(b)}개</td><td>${fmt(e)}건</td><td><span title="${detail}" style="font-weight:800;color:${color}">${pattern}</span></td></tr>`}).join('');document.querySelectorAll('#rows tr').forEach(tr=>tr.onclick=()=>{selected=tr.dataset.d;document.getElementById('district').value=selected;render()});
 let insight='';if(selected==='all'){insight=`서울 전체 가로쓰레기통은 ${year}년 ${fmt(totalBins)}개이며, 2024년 단속 실적은 ${fmt(totalE)}건입니다. 두 수치는 각각 설치 수와 단속 활동 결과를 나타냅니다.`}else if(selected==='focus'){insight=`강동구·서초구·마포구·종로구 4개 구의 ${year}년 가로쓰레기통 합계는 ${fmt(totalBins)}개이며, 2024년 단속 실적 합계는 ${fmt(totalE)}건입니다. 차트에서 쓰레기통 수와 단속 건수를 각각 비교하고, ‘설치 수 추이’로는 2013~2024년 4개 구 합계의 변화를 확인할 수 있습니다. 단속 건수의 과거 연도 자료는 현재 연결되어 있지 않아 단속 추이로 해석하지 않습니다.`}else{const b=index[selected].bins[year],e=index[selected].enforce,rankB=[...districts].sort((a,b)=>index[b].bins[year]-index[a].bins[year]).indexOf(selected)+1,rankE=[...districts].sort((a,b)=>index[b].enforce-index[a].enforce).indexOf(selected)+1;insight=`${selected}의 가로쓰레기통은 ${year}년 ${fmt(b)}개(25개 구 중 ${rankB}위), 2024년 단속 실적은 ${fmt(e)}건(단속 건수 기준 ${rankE}위)입니다. 이 순위만으로 쓰레기통 수가 단속 실적의 원인이라고 판단할 수는 없습니다.`}const corrGroup=selected==='all'?districts:focusDistricts;const corr=pearsonCorrelation(corrGroup,year);const corrText=corr===null?'피어슨 상관계수(r): 계산 불가':`피어슨 상관계수(r): ${corr.toFixed(3)} · ${corr>0?'양의':corr<0?'음의':'선형 상관 없음'} 상관 (${corrLabel(corr)})`;insight+=`  ${corrText}. 분석 대상 ${corrGroup.length}개 구의 ${year}년 쓰레기통 수와 2024년 단속 건수를 비교한 값입니다. 자치구 수가 적고 인구·면적·단속 인력 등을 보정하지 않았으므로 인과관계로 해석하지 마세요.`;document.getElementById('insight').textContent=insight;drawChart();refreshMap()}
-const yearSelect=document.getElementById('year');Object.keys(binsByYear).forEach(y=>yearSelect.add(new Option(y+'년',y,y==='2024',y==='2024')));yearSelect.onchange=e=>{year=e.target.value;render()};document.getElementById('district').onchange=e=>{selected=e.target.value;render()};document.getElementById('metric').onchange=e=>{metric=e.target.value;refreshMap()};document.getElementById('reset').onclick=()=>{selected='focus';metric='bins';chartType='bins';year='2024';document.getElementById('district').value='focus';document.getElementById('metric').value='bins';yearSelect.value='2024';document.querySelectorAll('[data-chart]').forEach(b=>b.classList.toggle('active',b.dataset.chart==='bins'));render()};
+const yearSelect=document.getElementById('year');Object.keys(binsByYear).forEach(y=>yearSelect.add(new Option(y+'년',y,y==='2024',y==='2024')));yearSelect.onchange=e=>{year=e.target.value;render()};document.getElementById('district').onchange=e=>{selected=e.target.value;render();zoomToDistrict(selected)};document.getElementById('metric').onchange=e=>{metric=e.target.value;refreshMap()};document.getElementById('reset').onclick=()=>{selected='focus';metric='bins';chartType='bins';year='2024';document.getElementById('district').value='focus';document.getElementById('metric').value='bins';yearSelect.value='2024';document.querySelectorAll('[data-chart]').forEach(b=>b.classList.toggle('active',b.dataset.chart==='bins'));render()};
 document.querySelectorAll('[data-chart]').forEach(b=>b.onclick=()=>{chartType=b.dataset.chart;document.querySelectorAll('[data-chart]').forEach(x=>x.classList.toggle('active',x===b));drawChart()});
 render();loadKakaoSdk();
 </script>
