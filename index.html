@@ -71,6 +71,8 @@ function initKakaoMap(){
  kakao.maps.load(()=>{
   const container=document.getElementById('map');
   map=new kakao.maps.Map(container,{center:new kakao.maps.LatLng(37.5665,126.9780),level:8});
+  // 행정구역 GeoJSON을 기다리지 않고 쓰레기통 표시부터 지도에 올립니다.
+  updateBinOverlays();
   loadGeo();
  });
 }
@@ -93,11 +95,14 @@ function color(v,min,max){if(v==null)return'#dbe2ea';let t=max===min?.5:(v-min)/
 function popupHtml(d){return `<div style="padding:10px 12px;line-height:1.7;min-width:190px"><b>${d}</b><br>가로쓰레기통(${year}): ${fmt(index[d]?.bins[year])}개<br>무단투기 단속(2024): ${fmt(index[d]?.enforce)}건</div>`}
 function polygonStyle(d){const values=districts.map(x=>val(x)).filter(v=>v!=null);const focusHit=selected==='focus'&&focusDistricts.includes(d);const active=selected===d||focusHit;return{strokeWeight:active?3:1,strokeColor:active?'#e58b32':'#ffffff',strokeOpacity:1,fillColor:focusHit?'#f4b76a':color(val(d),Math.min(...values),Math.max(...values)),fillOpacity:selected==='all'||selected==='focus'||selected===d?.78:.38}}
 function refreshMap(){
- if(!map||!geoLayer.length)return;
- geoLayer.forEach(item=>{
-  item.polygons.forEach(poly=>poly.setOptions(polygonStyle(item.name)));
-  item.polygons.forEach(poly=>poly.setZIndex(selected===item.name?10:1));
- });
+ if(!map)return;
+ // 경계 파일을 불러오지 못해도 쓰레기통 아이콘은 별도로 표시합니다.
+ if(geoLayer.length){
+  geoLayer.forEach(item=>{
+   item.polygons.forEach(poly=>poly.setOptions(polygonStyle(item.name)));
+   item.polygons.forEach(poly=>poly.setZIndex(selected===item.name?10:1));
+  });
+ }
  updateBinOverlays();
 }
 function zoomToDistrict(d){
@@ -186,7 +191,8 @@ async function loadGeo(){
   document.getElementById('mapStatus').textContent='🗑️ 아이콘과 숫자는 각 자치구의 쓰레기통 총량을 나타내는 대표 표시입니다. 아이콘을 눌러 해당 구로 이동할 수 있습니다.';
   refreshMap();zoomToDistrict(selected);return;
  }catch(e){}}
- document.getElementById('mapStatus').textContent='행정구역 경계 파일을 불러오지 못했습니다. 카카오맵 배경은 표시되지만 구별 색칠 기능은 사용할 수 없습니다. 인터넷 연결을 확인해 주세요.';
+ refreshMap();
+ document.getElementById('mapStatus').textContent='행정구역 경계 파일을 불러오지 못했습니다. 쓰레기통 아이콘은 대표 위치에 표시되며, 구별 경계 색칠만 사용할 수 없습니다.';
 }
 function activeDistricts(){return selected==='all'?districts:selected==='focus'?focusDistricts:[selected]}
 function drawChart(){const c=document.getElementById('chart'),ctx=c.getContext('2d'),w=c.width,h=c.height;ctx.clearRect(0,0,w,h);const list=activeDistricts();ctx.font='12px system-ui';ctx.fillStyle='#64748b';ctx.strokeStyle='#e7edf5';if(chartType==='correlation'){const vals=list.map(d=>({d,x:index[d].bins['2024'],y:index[d].enforce})).sort((a,b)=>a.x-b.x);const xMax=Math.max(...vals.map(a=>a.x))*1.08,yMax=Math.max(...vals.map(a=>a.y))*1.12;const left=62,right=w-20,top=36,bottom=h-48,pw=right-left,ph=bottom-top;const px=x=>left+x/xMax*pw,py=y=>bottom-y/yMax*ph;for(let i=0;i<5;i++){const gy=top+i*ph/4,gx=left+i*pw/4;ctx.strokeStyle='#e7edf5';ctx.beginPath();ctx.moveTo(left,gy);ctx.lineTo(right,gy);ctx.stroke();ctx.beginPath();ctx.moveTo(gx,top);ctx.lineTo(gx,bottom);ctx.stroke();ctx.fillStyle='#64748b';ctx.textAlign='right';ctx.fillText(Math.round(yMax*(1-i/4)).toLocaleString(),left-8,gy+4);ctx.textAlign='center';ctx.fillText(Math.round(xMax*i/4).toLocaleString(),gx,bottom+18)}const mx=vals.reduce((a,p)=>a+p.x,0)/vals.length,my=vals.reduce((a,p)=>a+p.y,0)/vals.length;let cov=0,vx=0,vy=0;vals.forEach(p=>{cov+=(p.x-mx)*(p.y-my);vx+=(p.x-mx)**2;vy+=(p.y-my)**2});const r=vx&&vy?cov/Math.sqrt(vx*vy):null;const slope=vx?cov/vx:0,intercept=my-slope*mx;ctx.strokeStyle='#64748b';ctx.setLineDash([6,4]);ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(px(0),py(Math.max(0,intercept)));ctx.lineTo(px(xMax),py(Math.max(0,Math.min(yMax,intercept+slope*xMax))));ctx.stroke();ctx.setLineDash([]);ctx.strokeStyle='#2458d3';ctx.lineWidth=2.5;ctx.beginPath();vals.forEach((p,i)=>{i?ctx.lineTo(px(p.x),py(p.y)):ctx.moveTo(px(p.x),py(p.y))});ctx.stroke();vals.forEach(p=>{ctx.fillStyle=p.d===selected?'#e58b32':'#2458d3';ctx.beginPath();ctx.arc(px(p.x),py(p.y),4,0,Math.PI*2);ctx.fill();ctx.fillStyle='#334155';ctx.font=vals.length>10?'9px system-ui':'11px system-ui';ctx.textAlign='left';ctx.fillText(p.d.replace('구',''),Math.min(right-28,px(p.x)+5),py(p.y)-6)});ctx.fillStyle='#172235';ctx.font='12px system-ui';ctx.textAlign='left';ctx.fillText('r = '+(r===null?'계산 불가':r.toFixed(3))+'  ·  '+(selected==='all'?'서울 25개 구':'관심 4개 구'),left,18);ctx.fillStyle='#64748b';ctx.fillText('가로쓰레기통 수 (개)',left,bottom+39);ctx.save();ctx.translate(15,top+ph/2);ctx.rotate(-Math.PI/2);ctx.textAlign='center';ctx.fillText('무단투기 단속 건수 (건)',0,0);ctx.restore();ctx.textAlign='left';return}const isTrend=chartType==='trend';if(isTrend){let vals=Object.keys(binsByYear).map(y=>({y,v:index[selected==='all'?'강동구':selected==='focus'?'강동구':selected].bins[y]}));if(selected==='all'||selected==='focus'){const trendDistricts=selected==='all'?districts:focusDistricts;vals=Object.keys(binsByYear).map(y=>({y,v:trendDistricts.reduce((s,d)=>s+index[d].bins[y],0)}))}const max=Math.max(...vals.map(a=>a.v))*1.08;for(let i=0;i<5;i++){let y=25+i*(h-65)/4;ctx.beginPath();ctx.moveTo(46,y);ctx.lineTo(w-12,y);ctx.stroke();ctx.fillText(Math.round(max*(1-i/4)).toLocaleString(),2,y+4)}ctx.strokeStyle='#2458d3';ctx.lineWidth=3;ctx.beginPath();vals.forEach((a,i)=>{let x=50+i*(w-75)/(vals.length-1),y=h-40-a.v/max*(h-70);i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke();vals.forEach((a,i)=>{let x=50+i*(w-75)/(vals.length-1),y=h-40-a.v/max*(h-70);ctx.fillStyle='#2458d3';ctx.beginPath();ctx.arc(x,y,3,0,Math.PI*2);ctx.fill();if(i%2===0||i===vals.length-1){ctx.fillStyle='#64748b';ctx.fillText(a.y,x-14,h-17)}});ctx.fillStyle='#172235';ctx.fillText(selected==='all'?'서울 전체 설치 수':'선택 자치구 설치 수',50,14);return}
