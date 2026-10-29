@@ -3,7 +3,6 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>서울 쓰레기통·무단투기 단속 데이터 탐색</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
 :root{--ink:#172235;--muted:#64748b;--line:#e2e8f0;--bg:#f4f7fb;--blue:#2458d3;--teal:#0f9b8e;--orange:#e58b32}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Malgun Gothic",sans-serif}
@@ -44,9 +43,8 @@ footer{font-size:11px;color:var(--muted);line-height:1.7;margin-top:18px}
  <section class="panel"><h2>지표 비교</h2><p class="sub">두 지표는 측정 대상이 다르므로 별도로 비교하세요.</p><div class="chart-tabs"><button class="active" data-chart="bins">쓰레기통 수</button><button data-chart="enforce">단속 건수</button><button data-chart="trend">설치 수 추이</button></div><canvas id="chart" width="760" height="360" aria-label="자치구별 비교 차트"></canvas><div class="insight" id="insight">데이터를 불러오는 중입니다.</div><div class="warn"><b>해석할 때 주의:</b> 단속 건수는 실제 무단투기율이 아닙니다. 단속 인력·활동량, 신고, 유동인구 등에 영향을 받습니다. 이 자료만으로 “쓰레기통이 적어서 무단투기가 늘었다”고 인과관계를 단정할 수 없습니다.</div></section>
 </div>
 <section class="panel" style="margin-top:16px"><h2>자치구별 원자료 비교</h2><p class="sub">행을 누르면 지도와 상단 수치가 해당 자치구 기준으로 바뀝니다. 표는 선택한 쓰레기통 연도 기준입니다.</p><div class="table-wrap"><table><thead><tr><th>자치구</th><th>가로쓰레기통</th><th>무단투기 단속 건수</th><th>2023→2024 변화</th></tr></thead><tbody id="rows"></tbody></table></div></section>
-<section class="panel" style="margin-top:16px"><h2>데이터 출처와 기준</h2><div class="sources" style="margin-top:12px"><div class="source"><b>가로쓰레기통 설치 현황</b><p>업로드된 「서울특별시 년도별 자치구별 가로쓰레기통 설치현황(2024.12.)」 파일에서 2013~2024년 수치를 반영했습니다.</p><a href="https://data.seoul.go.kr/dataList/OA-15069/F/1/datasetView.do" target="_blank" rel="noopener">서울 열린데이터광장 원자료 ↗</a></div><div class="source"><b>무단투기 단속 실적</b><p>업로드된 「2024년 자치구별 무단투기 단속 실적(수합본)」 파일의 자치구별 단속 건수를 반영했습니다. 합계는 113,691건입니다.</p><a href="https://opengov.seoul.go.kr/public/35290621" target="_blank" rel="noopener">서울 정보소통광장 원자료 ↗</a></div></div><footer>지도 경계: southkorea/seoul-maps의 서울 행정구역 GeoJSON(2013년 경계 데이터) 참고 · 베이스맵: OpenStreetMap. 지도 경계 데이터의 기준연도와 최신 행정경계가 다를 수 있습니다. 차트와 비교표는 제공된 파일의 값이며 실시간 갱신되지 않습니다. 지도 데이터·타일 로딩을 위해 인터넷 연결이 필요합니다.</footer></section>
+<section class="panel" style="margin-top:16px"><h2>데이터 출처와 기준</h2><div class="sources" style="margin-top:12px"><div class="source"><b>가로쓰레기통 설치 현황</b><p>업로드된 「서울특별시 년도별 자치구별 가로쓰레기통 설치현황(2024.12.)」 파일에서 2013~2024년 수치를 반영했습니다.</p><a href="https://data.seoul.go.kr/dataList/OA-15069/F/1/datasetView.do" target="_blank" rel="noopener">서울 열린데이터광장 원자료 ↗</a></div><div class="source"><b>무단투기 단속 실적</b><p>업로드된 「2024년 자치구별 무단투기 단속 실적(수합본)」 파일의 자치구별 단속 건수를 반영했습니다. 합계는 113,691건입니다.</p><a href="https://opengov.seoul.go.kr/public/35290621" target="_blank" rel="noopener">서울 정보소통광장 원자료 ↗</a></div></div><footer>지도 경계: southkorea/seoul-maps의 서울 행정구역 GeoJSON(2013년 경계 데이터) 참고 · 베이스맵: Kakao Maps. 지도 경계 데이터의 기준연도와 최신 행정경계가 다를 수 있습니다. 차트와 비교표는 제공된 파일의 값이며 실시간 갱신되지 않습니다. 지도 데이터·타일 로딩을 위해 인터넷 연결이 필요합니다.</footer></section>
 </main>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const binsByYear={
 "2013":[130,130,147,58,112,250,79,111,129,101,66,191,169,182,176,80,212,59,201,129,62,6,946,132,136],
@@ -62,25 +60,84 @@ const binsByYear={
 "2023":[272,146,278,102,104,110,101,185,217,303,156,308,218,254,136,315,221,70,123,230,108,246,974,151,52],
 "2024":[330,176,283,142,234,191,131,247,229,325,156,380,284,270,186,343,265,70,202,290,256,252,1014,191,96]
 };
-const javascriptKey = '7370194f0cd3758fcb319ad222727e6d';
+const javascriptKey = 'YOUR_JAVASCRIPT_KEY';
 const districts=["종로구","중구","용산구","성동구","광진구","동대문구","중랑구","성북구","강북구","도봉구","노원구","은평구","서대문구","마포구","양천구","강서구","구로구","금천구","영등포구","동작구","관악구","서초구","강남구","송파구","강동구"];
 const enforcement=[22243,9189,588,3087,1409,6880,2949,764,2174,1555,2213,4831,3773,2835,888,515,4341,1722,2803,1568,5508,9003,11462,4345,7046];
 const index={};districts.forEach((d,i)=>index[d]={name:d,bins:{},enforce:enforcement[i]});Object.keys(binsByYear).forEach(y=>binsByYear[y].forEach((v,i)=>index[districts[i]].bins[y]=v));
-let selected='all',metric='bins',chartType='bins',year='2024',geoLayer=null,geoReady=false;
-const map=L.map('map',{scrollWheelZoom:true}).setView([37.5665,126.9780],10);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(map);
+let selected='all',metric='bins',chartType='bins',year='2024',map=null,geoLayer=[],geoReady=false,infoOverlay=null;
+function initKakaoMap(){
+ if(!window.kakao||!kakao.maps){document.getElementById('mapStatus').textContent='카카오맵 SDK를 불러오지 못했습니다. JavaScript 키와 도메인 설정을 확인해 주세요.';return}
+ kakao.maps.load(()=>{
+  const container=document.getElementById('map');
+  map=new kakao.maps.Map(container,{center:new kakao.maps.LatLng(37.5665,126.9780),level:8});
+  loadGeo();
+ });
+}
+function loadKakaoSdk(){
+ if(!javascriptKey||javascriptKey==='YOUR_JAVASCRIPT_KEY'){
+  document.getElementById('mapStatus').textContent='카카오 JavaScript 키를 입력하면 지도가 표시됩니다. 키는 공개 저장소에 올리기 전 허용 도메인을 제한하세요.';
+  return;
+ }
+ const script=document.createElement('script');
+ script.src='https://dapi.kakao.com/v2/maps/sdk.js?appkey='+encodeURIComponent(javascriptKey)+'&autoload=false';
+ script.onload=initKakaoMap;
+ script.onerror=()=>{document.getElementById('mapStatus').textContent='카카오맵 SDK 로딩에 실패했습니다. 키·도메인·카카오맵 사용 설정을 확인해 주세요.'};
+ document.head.appendChild(script);
+}
 function normalizeName(p){let vals=Object.values(p||{}).filter(v=>typeof v==='string');for(const v of vals){let s=v.replace(/\s/g,'');let found=districts.find(d=>s===d||s.endsWith(d));if(found)return found;}return null}
 function val(d){return metric==='bins'?index[d]?.bins[year]:index[d]?.enforce}
 function fmt(n){return n==null?'자료 없음':n.toLocaleString('ko-KR')}
 function color(v,min,max){if(v==null)return'#dbe2ea';let t=max===min?.5:(v-min)/(max-min);return t<.33?'#e6efff':t<.66?'#8db4ff':'#2458d3'}
-function styleFeature(feature){const d=normalizeName(feature.properties);const values=districts.map(x=>val(x)).filter(v=>v!=null);return{color:selected===d?'#e58b32':'#ffffff',weight:selected===d?3:1.2,fillColor:color(val(d),Math.min(...values),Math.max(...values)),fillOpacity:selected==='all'||selected===d?.78:.38}}
-function popupHtml(d){return `<b>${d}</b><br>가로쓰레기통(${year}): ${fmt(index[d]?.bins[year])}개<br>무단투기 단속(2024): ${fmt(index[d]?.enforce)}건`}
-function refreshMap(){if(!geoLayer)return;geoLayer.setStyle(styleFeature);geoLayer.eachLayer(l=>{let d=normalizeName(l.feature.properties);if(d){l.bindTooltip(d,{sticky:true});l.bindPopup(popupHtml(d));if(selected===d)l.bringToFront()}})}
+function popupHtml(d){return `<div style="padding:10px 12px;line-height:1.7;min-width:190px"><b>${d}</b><br>가로쓰레기통(${year}): ${fmt(index[d]?.bins[year])}개<br>무단투기 단속(2024): ${fmt(index[d]?.enforce)}건</div>`}
+function polygonStyle(d){const values=districts.map(x=>val(x)).filter(v=>v!=null);return{strokeWeight:selected===d?3:1,strokeColor:selected===d?'#e58b32':'#ffffff',strokeOpacity:1,fillColor:color(val(d),Math.min(...values),Math.max(...values)),fillOpacity:selected==='all'||selected===d?.78:.38}}
+function refreshMap(){
+ if(!map||!geoLayer.length)return;
+ geoLayer.forEach(item=>{
+  item.polygons.forEach(poly=>poly.setOptions(polygonStyle(item.name)));
+  if(selected===item.name)item.polygons.forEach(poly=>poly.setZIndex(10));
+ });
+}
+function geoRingsToPath(rings){return rings.map(ring=>ring.map(coord=>new kakao.maps.LatLng(coord[1],coord[0])))}
+function makePolygons(feature,d){
+ const geometry=feature.geometry;if(!geometry)return[];
+ const polygons=geometry.type==='Polygon'?[geometry.coordinates]:geometry.type==='MultiPolygon'?geometry.coordinates:[];
+ const result=[];
+ polygons.forEach(poly=>{
+  if(!poly.length)return;
+  const paths=geoRingsToPath(poly);
+  const polygon=new kakao.maps.Polygon({map, path:paths, ...polygonStyle(d)});
+  kakao.maps.event.addListener(polygon,'click',mouseEvent=>{
+   selected=d;document.getElementById('district').value=d;render();
+   if(infoOverlay)infoOverlay.setMap(null);
+   infoOverlay=new kakao.maps.CustomOverlay({position:mouseEvent.latLng,content:popupHtml(d),yAnchor:1});
+   infoOverlay.setMap(map);
+  });
+  result.push(polygon);
+ });
+ return result;
+}
 const geoUrls=[
 'https://raw.githubusercontent.com/southkorea/seoul-maps/master/kostat/2013/geojson/seoul_municipalities_geo.json',
 'https://raw.githubusercontent.com/southkorea/seoul-maps/master/juso/2015/geojson/seoul_municipalities_geo.json'
 ];
-async function loadGeo(){for(const url of geoUrls){try{const r=await fetch(url);if(!r.ok)continue;const g=await r.json();if(!g.features?.length)continue;geoLayer=L.geoJSON(g,{style:styleFeature,onEachFeature:(f,l)=>{let d=normalizeName(f.properties);if(d){l.bindTooltip(d,{sticky:true});l.bindPopup(popupHtml(d));l.on('click',()=>{selected=d;document.getElementById('district').value=d;render()})}}}).addTo(map);map.fitBounds(geoLayer.getBounds(),{padding:[12,12]});geoReady=true;document.getElementById('mapStatus').textContent='행정구역 경계를 불러왔습니다. 구 경계는 공개 GeoJSON 자료 기준입니다.';refreshMap();return}catch(e){}}document.getElementById('mapStatus').textContent='행정구역 경계 파일을 불러오지 못했습니다. 배경 지도는 표시되지만 구별 색칠 기능은 사용할 수 없습니다. 인터넷 연결을 확인해 주세요.'}
+async function loadGeo(){
+ for(const url of geoUrls){try{
+  const r=await fetch(url);if(!r.ok)continue;const g=await r.json();if(!g.features?.length)continue;
+  const bounds=new kakao.maps.LatLngBounds();
+  g.features.forEach(feature=>{
+   const d=normalizeName(feature.properties);if(!d)return;
+   const polygons=makePolygons(feature,d);if(!polygons.length)return;
+   geoLayer.push({name:d,polygons});
+   const geometry=feature.geometry, coords=geometry.type==='Polygon'?[geometry.coordinates]:geometry.type==='MultiPolygon'?geometry.coordinates:[];
+   coords.forEach(poly=>poly.forEach(ring=>ring.forEach(c=>bounds.extend(new kakao.maps.LatLng(c[1],c[0])))));
+  });
+  if(!geoLayer.length)continue;
+  map.setBounds(bounds);geoReady=true;
+  document.getElementById('mapStatus').textContent='행정구역 경계를 불러왔습니다. 구를 누르면 수치가 표시됩니다. 경계 출처는 공개 GeoJSON 자료입니다.';
+  refreshMap();return;
+ }catch(e){}}
+ document.getElementById('mapStatus').textContent='행정구역 경계 파일을 불러오지 못했습니다. 카카오맵 배경은 표시되지만 구별 색칠 기능은 사용할 수 없습니다. 인터넷 연결을 확인해 주세요.';
+}
 function activeDistricts(){return selected==='all'?districts:[selected]}
 function drawChart(){const c=document.getElementById('chart'),ctx=c.getContext('2d'),w=c.width,h=c.height;ctx.clearRect(0,0,w,h);const list=activeDistricts();ctx.font='12px system-ui';ctx.fillStyle='#64748b';ctx.strokeStyle='#e7edf5';const isTrend=chartType==='trend';if(isTrend){let vals=Object.keys(binsByYear).map(y=>({y,v:index[selected==='all'?'강동구':selected].bins[y]}));if(selected==='all'){vals=Object.keys(binsByYear).map(y=>({y,v:districts.reduce((s,d)=>s+index[d].bins[y],0)}))}const max=Math.max(...vals.map(a=>a.v))*1.08;for(let i=0;i<5;i++){let y=25+i*(h-65)/4;ctx.beginPath();ctx.moveTo(46,y);ctx.lineTo(w-12,y);ctx.stroke();ctx.fillText(Math.round(max*(1-i/4)).toLocaleString(),2,y+4)}ctx.strokeStyle='#2458d3';ctx.lineWidth=3;ctx.beginPath();vals.forEach((a,i)=>{let x=50+i*(w-75)/(vals.length-1),y=h-40-a.v/max*(h-70);i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke();vals.forEach((a,i)=>{let x=50+i*(w-75)/(vals.length-1),y=h-40-a.v/max*(h-70);ctx.fillStyle='#2458d3';ctx.beginPath();ctx.arc(x,y,3,0,Math.PI*2);ctx.fill();if(i%2===0||i===vals.length-1){ctx.fillStyle='#64748b';ctx.fillText(a.y,x-14,h-17)}});ctx.fillStyle='#172235';ctx.fillText(selected==='all'?'서울 전체 설치 수':'선택 자치구 설치 수',50,14);return}
 const vals=list.map(d=>({d,v:chartType==='bins'?index[d].bins[year]:index[d].enforce}));const max=Math.max(...vals.map(a=>a.v))*1.1;const top=24,bottom=44,plotH=h-top-bottom,plotW=w-72;for(let i=0;i<5;i++){let y=top+i*plotH/4;ctx.beginPath();ctx.moveTo(56,y);ctx.lineTo(w-10,y);ctx.stroke();ctx.fillStyle='#64748b';ctx.fillText(Math.round(max*(1-i/4)).toLocaleString(),2,y+4)}const slot=plotW/vals.length,bw=Math.min(42,slot*.62);vals.forEach((a,i)=>{let x=56+i*slot+(slot-bw)/2,bh=a.v/max*plotH,y=top+plotH-bh;ctx.fillStyle=a.d===selected?'#e58b32':(chartType==='bins'?'#2458d3':'#0f9b8e');ctx.fillRect(x,y,bw,bh);ctx.fillStyle='#172235';ctx.textAlign='center';ctx.font=vals.length>10?'10px system-ui':'11px system-ui';ctx.fillText(a.v.toLocaleString(),x+bw/2,Math.max(12,y-5));ctx.fillStyle='#64748b';ctx.fillText(a.d.replace('구',''),x+bw/2,h-22)});ctx.textAlign='left'}
@@ -89,6 +146,6 @@ document.getElementById('rows').innerHTML=list.map(d=>{let b=index[d].bins[year]
 let insight='';if(selected==='all'){insight=`서울 전체 가로쓰레기통은 ${year}년 ${fmt(totalBins)}개이며, 2024년 단속 실적은 ${fmt(totalE)}건입니다. 두 수치는 각각 설치 수와 단속 활동 결과를 나타냅니다.`}else{const b=index[selected].bins[year],e=index[selected].enforce,rankB=[...districts].sort((a,b)=>index[b].bins[year]-index[a].bins[year]).indexOf(selected)+1,rankE=[...districts].sort((a,b)=>index[b].enforce-index[a].enforce).indexOf(selected)+1;insight=`${selected}의 가로쓰레기통은 ${year}년 ${fmt(b)}개(25개 구 중 ${rankB}위), 2024년 단속 실적은 ${fmt(e)}건(단속 건수 기준 ${rankE}위)입니다. 이 순위만으로 쓰레기통 수가 단속 실적의 원인이라고 판단할 수는 없습니다.`}document.getElementById('insight').textContent=insight;drawChart();refreshMap()}
 const yearSelect=document.getElementById('year');Object.keys(binsByYear).forEach(y=>yearSelect.add(new Option(y+'년',y,y==='2024',y==='2024')));yearSelect.onchange=e=>{year=e.target.value;render()};document.getElementById('district').onchange=e=>{selected=e.target.value;render()};document.getElementById('metric').onchange=e=>{metric=e.target.value;refreshMap()};document.getElementById('reset').onclick=()=>{selected='all';metric='bins';chartType='bins';year='2024';document.getElementById('district').value='all';document.getElementById('metric').value='bins';yearSelect.value='2024';document.querySelectorAll('[data-chart]').forEach(b=>b.classList.toggle('active',b.dataset.chart==='bins'));render()};
 document.querySelectorAll('[data-chart]').forEach(b=>b.onclick=()=>{chartType=b.dataset.chart;document.querySelectorAll('[data-chart]').forEach(x=>x.classList.toggle('active',x===b));drawChart()});
-render();loadGeo();
+render();loadKakaoSdk();
 </script>
 </body></html>
